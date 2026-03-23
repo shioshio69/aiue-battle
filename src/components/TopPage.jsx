@@ -1,15 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 
 export default function TopPage({ onCreateRoom, onJoinRoom, onShowRules }) {
   const [nickname, setNickname] = useState(() => localStorage.getItem('aiue_nickname') || '');
   const [roomIdInput, setRoomIdInput] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const composingRef = useRef(false);
 
   const handleNicknameChange = (e) => {
     const v = e.target.value.slice(0, 8);
     setNickname(v);
     localStorage.setItem('aiue_nickname', v);
+  };
+
+  const handleRoomIdChange = (e) => {
+    if (composingRef.current) return;
+    const filtered = e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 4);
+    setRoomIdInput(filtered);
   };
 
   const handleCreate = async () => {
@@ -69,8 +76,18 @@ export default function TopPage({ onCreateRoom, onJoinRoom, onShowRules }) {
           <input
             className="input-field"
             type="text"
+            inputMode="url"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="characters"
+            spellCheck={false}
             value={roomIdInput}
-            onChange={e => setRoomIdInput(e.target.value.toUpperCase().slice(0, 4))}
+            onChange={handleRoomIdChange}
+            onCompositionStart={() => { composingRef.current = true; }}
+            onCompositionEnd={(e) => {
+              composingRef.current = false;
+              handleRoomIdChange(e);
+            }}
             placeholder="4桁のID"
             maxLength={4}
           />

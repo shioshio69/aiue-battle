@@ -1,12 +1,26 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { ROOM_ID_CHARS } from '../gameLogic';
+
+const ROOM_ID_LENGTH = 4;
+const MINI_BOARD_ROWS = [
+  ['あ','い','う','え','お'],
+  ['か','き','く','け','こ'],
+  ['さ','し','す','せ','そ'],
+  ['た','ち','つ','て','と'],
+  ['な','に','ぬ','ね','の'],
+  ['は','ひ','ふ','へ','ほ'],
+  ['ま','み','む','め','も'],
+  ['や','','ゆ','','よ'],
+  ['ら','り','る','れ','ろ'],
+  ['わ','','ん','',''],
+];
 
 export default function TopPage({ onCreateRoom, onJoinRoom, onShowRules }) {
   const [nickname, setNickname] = useState(() => localStorage.getItem('aiue_nickname') || '');
-  const [roomIdInput, setRoomIdInput] = useState('');
+  const [roomIdChars, setRoomIdChars] = useState([]);
+  const [showKeyboard, setShowKeyboard] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const composingRef = useRef(false);
 
   const handleNicknameChange = (e) => {
     const v = e.target.value.slice(0, 8);
@@ -14,18 +28,18 @@ export default function TopPage({ onCreateRoom, onJoinRoom, onShowRules }) {
     localStorage.setItem('aiue_nickname', v);
   };
 
-  const filterHiragana = (value) => {
-    return [...value].filter(c => ROOM_ID_CHARS.includes(c)).join('').slice(0, 4);
+  const handleCharInput = (char) => {
+    if (roomIdChars.length >= ROOM_ID_LENGTH) return;
+    setRoomIdChars([...roomIdChars, char]);
   };
 
-  const handleRoomIdChange = (e) => {
-    if (composingRef.current) {
-      // IME変換中は生の値をそのまま表示（Reactに巻き戻させない）
-      setRoomIdInput(e.target.value);
-      return;
-    }
-    setRoomIdInput(filterHiragana(e.target.value));
+  const handleDelete = () => {
+    if (roomIdChars.length === 0) return;
+    setRoomIdChars(roomIdChars.slice(0, -1));
   };
+
+  const roomId = roomIdChars.join('');
+  const canJoin = nickname.trim() && roomIdChars.length === ROOM_ID_LENGTH;
 
   const handleCreate = async () => {
     if (!nickname.trim()) return;
@@ -40,11 +54,11 @@ export default function TopPage({ onCreateRoom, onJoinRoom, onShowRules }) {
   };
 
   const handleJoin = async () => {
-    if (!nickname.trim() || !roomIdInput.trim()) return;
+    if (!canJoin) return;
     setLoading(true);
     setError('');
     try {
-      await onJoinRoom(roomIdInput.trim(), nickname.trim());
+      await onJoinRoom(roomId, nickname.trim());
     } catch (e) {
       setError(e.message);
     }
@@ -80,30 +94,69 @@ export default function TopPage({ onCreateRoom, onJoinRoom, onShowRules }) {
         <div className="divider"><span>または</span></div>
 
         <label className="input-label">ルームIDで参加</label>
-        <div className="join-row">
-          <input
-            className="input-field"
-            type="text"
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
-            value={roomIdInput}
-            onChange={handleRoomIdChange}
-            onCompositionStart={() => { composingRef.current = true; }}
-            onCompositionEnd={(e) => {
-              composingRef.current = false;
-              setRoomIdInput(filterHiragana(e.target.value));
-            }}
-            placeholder="ひらがな4文字"
-          />
-          <button
-            className="btn btn-secondary"
-            onClick={handleJoin}
-            disabled={!nickname.trim() || roomIdInput.length < 4 || loading}
-          >
-            参加
-          </button>
+
+        <div
+          className="room-id-input-slots"
+          onClick={() => setShowKeyboard(true)}
+        >
+          {Array(ROOM_ID_LENGTH).fill(null).map((_, i) => (
+            <span
+              key={i}
+              className={`room-id-slot ${roomIdChars[i] ? 'filled' : ''} ${i === roomIdChars.length && showKeyboard ? 'active' : ''}`}
+            >
+              {roomIdChars[i] || ''}
+            </span>
+          ))}
         </div>
+
+        {showKeyboard && (
+          <div className="room-id-keyboard">
+            {MINI_BOARD_ROWS.map((row, ri) => (
+              <div key={ri} className="room-id-kb-row">
+                {row.map((char, ci) =>
+                  char ? (
+                    <button
+                      key={ci}
+                      className="room-id-kb-key"
+                      onClick={() => handleCharInput(char)}
+                      disabled={roomIdChars.length >= ROOM_ID_LENGTH}
+                    >
+                      {char}
+                    </button>
+                  ) : (
+                    <span key={ci} className="room-id-kb-empty" />
+                  )
+                )}
+              </div>
+            ))}
+            <div className="room-id-kb-actions">
+              <button className="btn btn-small" onClick={handleDelete}>
+                ← 削除
+              </button>
+              <button
+                className="btn btn-small"
+                onClick={() => { setRoomIdChars([]); }}
+              >
+                全消し
+              </button>
+              <button
+                className="btn btn-small"
+                onClick={() => setShowKeyboard(false)}
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        )}
+
+        <button
+          className="btn btn-secondary"
+          onClick={handleJoin}
+          disabled={!canJoin || loading}
+          style={{ width: '100%' }}
+        >
+          参加
+        </button>
 
         {error && <p className="error-text">{error}</p>}
       </div>

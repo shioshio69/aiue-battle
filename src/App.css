@@ -153,6 +153,60 @@ body {
 .join-row { display: flex; gap: 8px; }
 .join-row .input-field { flex: 1; }
 
+/* ルームID入力スロット */
+.room-id-input-slots {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  cursor: pointer;
+}
+.room-id-slot {
+  width: 48px; height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #445;
+  border-radius: var(--radius-sm);
+  font-size: 1.4rem;
+  font-weight: 900;
+  background: #0d1b2a;
+  color: var(--text);
+  transition: all 0.2s;
+}
+.room-id-slot.filled { border-color: var(--success); }
+.room-id-slot.active { border-color: var(--primary); background: #2a1525; }
+
+/* ルームIDミニキーボード */
+.room-id-keyboard {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+}
+.room-id-kb-row { display: flex; gap: 3px; justify-content: center; }
+.room-id-kb-key {
+  font-family: inherit;
+  width: 40px; height: 38px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 6px;
+  background: var(--secondary);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s;
+  touch-action: manipulation;
+}
+.room-id-kb-key:active:not(:disabled) { background: var(--primary); transform: scale(0.93); }
+.room-id-kb-key:disabled { opacity: 0.3; }
+.room-id-kb-empty { width: 40px; height: 38px; }
+.room-id-kb-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 4px;
+}
+
 /* === Rules Page === */
 .rules-page {
   width: 100%;
@@ -570,6 +624,15 @@ body {
   .top-page { padding: 30px 16px; }
   .top-card { padding: 20px 16px; }
 
+  /* ルームIDミニキーボード */
+  .room-id-kb-key, .room-id-kb-empty {
+    width: calc((100vw - 64px - 12px) / 5);
+    max-width: 48px;
+    height: 40px;
+    font-size: 0.9rem;
+  }
+  .room-id-slot { width: 44px; height: 50px; font-size: 1.2rem; }
+
   /* バトル画面: ボードセルをビューポート幅に合わせて動的サイズ */
   .board-cell, .board-empty {
     width: calc((100vw - 24px - 12px) / 5);  /* 5列 + gap */
@@ -635,6 +698,15 @@ body {
   .top-title { font-size: 1.7rem; }
   .top-subtitle { font-size: 0.85rem; letter-spacing: 0.2em; }
   .page-title { font-size: 1.3rem; }
+
+  .room-id-kb-key, .room-id-kb-empty {
+    width: calc((100vw - 52px - 12px) / 5);
+    max-width: 40px;
+    height: 36px;
+    font-size: 0.85rem;
+  }
+  .room-id-slot { width: 38px; height: 44px; font-size: 1.1rem; }
+  .room-id-input-slots { gap: 6px; }
 
   .board-cell, .board-empty {
     width: calc((100vw - 20px - 12px) / 5);

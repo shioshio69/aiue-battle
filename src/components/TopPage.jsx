@@ -19,7 +19,11 @@ export default function TopPage({ onCreateRoom, onJoinRoom, onShowRules }) {
   };
 
   const handleRoomIdChange = (e) => {
-    if (composingRef.current) return;
+    if (composingRef.current) {
+      // IME変換中は生の値をそのまま表示（Reactに巻き戻させない）
+      setRoomIdInput(e.target.value);
+      return;
+    }
     setRoomIdInput(filterHiragana(e.target.value));
   };
 

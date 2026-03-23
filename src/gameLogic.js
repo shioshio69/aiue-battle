@@ -1,11 +1,11 @@
 import { EMPTY_SLOT, SLOT_COUNT } from './constants';
 
-// 4桁ルームID生成（英大文字+数字）
+// 4文字ルームID生成（ひらがな）
+export const ROOM_ID_CHARS = 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわん';
 export const generateRoomId = () => {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 紛らわしい文字を除外
   let id = '';
   for (let i = 0; i < 4; i++) {
-    id += chars[Math.floor(Math.random() * chars.length)];
+    id += ROOM_ID_CHARS[Math.floor(Math.random() * ROOM_ID_CHARS.length)];
   }
   return id;
 };

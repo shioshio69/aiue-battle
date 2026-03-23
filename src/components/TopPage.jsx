@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { ROOM_ID_CHARS } from '../gameLogic';
 
 export default function TopPage({ onCreateRoom, onJoinRoom, onShowRules }) {
   const [nickname, setNickname] = useState(() => localStorage.getItem('aiue_nickname') || '');
@@ -13,10 +14,13 @@ export default function TopPage({ onCreateRoom, onJoinRoom, onShowRules }) {
     localStorage.setItem('aiue_nickname', v);
   };
 
+  const filterHiragana = (value) => {
+    return [...value].filter(c => ROOM_ID_CHARS.includes(c)).join('').slice(0, 4);
+  };
+
   const handleRoomIdChange = (e) => {
     if (composingRef.current) return;
-    const filtered = e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 4);
-    setRoomIdInput(filtered);
+    setRoomIdInput(filterHiragana(e.target.value));
   };
 
   const handleCreate = async () => {
@@ -36,7 +40,7 @@ export default function TopPage({ onCreateRoom, onJoinRoom, onShowRules }) {
     setLoading(true);
     setError('');
     try {
-      await onJoinRoom(roomIdInput.trim().toUpperCase(), nickname.trim());
+      await onJoinRoom(roomIdInput.trim(), nickname.trim());
     } catch (e) {
       setError(e.message);
     }
@@ -76,20 +80,17 @@ export default function TopPage({ onCreateRoom, onJoinRoom, onShowRules }) {
           <input
             className="input-field"
             type="text"
-            inputMode="url"
             autoComplete="off"
             autoCorrect="off"
-            autoCapitalize="characters"
             spellCheck={false}
             value={roomIdInput}
             onChange={handleRoomIdChange}
             onCompositionStart={() => { composingRef.current = true; }}
             onCompositionEnd={(e) => {
               composingRef.current = false;
-              handleRoomIdChange(e);
+              setRoomIdInput(filterHiragana(e.target.value));
             }}
-            placeholder="4桁のID"
-            maxLength={4}
+            placeholder="ひらがな4文字"
           />
           <button
             className="btn btn-secondary"

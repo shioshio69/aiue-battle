@@ -1,13 +1,109 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BOARD_ROWS, SLOT_COUNT, EMPTY_SLOT, PLAYER_COLORS } from '../constants';
 
-export default function BattleScreen({ room, uid, onAttack }) {
+const ATTACK_OVERLAY_MS = 1700;
+const REVEAL_DELAY_MS = 800;
+const TURN_OVERLAY_MS = 1500;
+
+export default function BattleScreen({ room, uid, onAttack, onRestart }) {
   const [attacking, setAttacking] = useState(false);
+  const [attackOverlay, setAttackOverlay] = useState(null);
+  const [attackOverlayKey, setAttackOverlayKey] = useState(0);
+  const [justRevealedChar, setJustRevealedChar] = useState(null);
+  const [turnOverlay, setTurnOverlay] = useState(null);
+  const [overlayKey, setOverlayKey] = useState(0);
+  const prevTurnIndexRef = useRef(room.turnIndex);
+  const prevAttackCountRef = useRef(room.turnAttackCount || 0);
+  const prevAttackTimeRef = useRef(room.lastAttackTime || 0);
+  const timersRef = useRef([]);
 
   const playerOrder = room.playerOrder || [];
   const currentTurnUid = playerOrder[room.turnIndex];
   const isMyTurn = currentTurnUid === uid;
   const board = room.board || {};
+  const attackCount = room.turnAttackCount || 0;
+
+  // タイマー管理ヘルパー
+  const addTimer = (fn, ms) => {
+    const id = setTimeout(fn, ms);
+    timersRef.current.push(id);
+    return id;
+  };
+  const clearAllTimers = () => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+  };
+
+  // 攻撃検知 → 攻撃オーバーレイ → オープン演出 → ターンオーバーレイ
+  useEffect(() => {
+    const attackTime = room.lastAttackTime || 0;
+    const attackChar = room.lastAttackChar;
+    const attackHappened = attackTime > prevAttackTimeRef.current && attackChar;
+
+    const turnChanged = prevTurnIndexRef.current !== room.turnIndex;
+    const comboTriggered = !turnChanged
+      && prevAttackCountRef.current < attackCount
+      && attackCount > 0;
+
+    prevAttackTimeRef.current = attackTime;
+    prevTurnIndexRef.current = room.turnIndex;
+    prevAttackCountRef.current = attackCount;
+
+    if (!attackHappened && !turnChanged && !comboTriggered) return;
+
+    clearAllTimers();
+    setAttackOverlay(null);
+    setJustRevealedChar(null);
+    setTurnOverlay(null);
+
+    if (attackHappened) {
+      // Step 1: 攻撃文字オーバーレイ（hit数付き）
+      const hits = room.lastAttackHits || 0;
+      setAttackOverlay({ char: attackChar, hits });
+      setAttackOverlayKey(k => k + 1);
+
+      // Step 2: オープン演出（攻撃文字をhand-slotに反映するタイミング）
+      addTimer(() => {
+        setJustRevealedChar(attackChar);
+      }, REVEAL_DELAY_MS);
+
+      // Step 3: 攻撃オーバーレイ消す
+      addTimer(() => {
+        setAttackOverlay(null);
+      }, ATTACK_OVERLAY_MS);
+
+      // Step 4: ターンオーバーレイ（攻撃オーバーレイの後）
+      if (turnChanged || comboTriggered) {
+        addTimer(() => {
+          showTurnOverlay(turnChanged, comboTriggered);
+        }, ATTACK_OVERLAY_MS + 200);
+      }
+
+      // Step 5: オープン演出リセット
+      addTimer(() => {
+        setJustRevealedChar(null);
+      }, ATTACK_OVERLAY_MS + 1000);
+    } else if (turnChanged || comboTriggered) {
+      showTurnOverlay(turnChanged, comboTriggered);
+    }
+
+    return clearAllTimers;
+  }, [room.lastAttackTime, room.turnIndex, attackCount]);
+
+  const showTurnOverlay = (turnChanged, comboTriggered) => {
+    const turnUid = playerOrder[room.turnIndex];
+    const turnPlayer = room.players?.[turnUid];
+    if (!turnPlayer) return;
+    const isMe = turnUid === uid;
+
+    setTurnOverlay({
+      name: isMe ? 'あなた' : turnPlayer.name,
+      isMe,
+      isCombo: comboTriggered,
+    });
+    setOverlayKey(k => k + 1);
+    addTimer(() => setTurnOverlay(null), TURN_OVERLAY_MS);
+  };
 
   const handleAttack = async (char) => {
     if (!isMyTurn || attacking || board[char]) return;
@@ -29,7 +125,9 @@ export default function BattleScreen({ room, uid, onAttack }) {
     .filter(p => p.name);
 
   const currentPlayerName = room.players?.[currentTurnUid]?.name || '???';
-  const attackCount = room.turnAttackCount || 0;
+  const isHost = room.hostUid === uid;
+  const myPlayer = room.players?.[uid];
+  const mySlots = myPlayer?.slots || [];
 
   return (
     <div className="battle-page">
@@ -59,11 +157,12 @@ export default function BattleScreen({ room, uid, onAttack }) {
                   const revealed = p.revealed?.[i];
                   const slotChar = p.slots?.[i];
                   const isX = slotChar === EMPTY_SLOT;
+                  const isJustRevealed = revealed && slotChar === justRevealedChar && !isX;
 
                   return (
                     <div
                       key={i}
-                      className={`hand-slot ${revealed ? 'revealed' : 'hidden'} ${isX && revealed ? 'slot-x' : ''}`}
+                      className={`hand-slot ${revealed ? 'revealed' : 'hidden'} ${isX && revealed ? 'slot-x' : ''} ${isJustRevealed ? 'just-revealed' : ''}`}
                     >
                       {revealed ? slotChar : (i + 1)}
                     </div>
@@ -105,6 +204,54 @@ export default function BattleScreen({ room, uid, onAttack }) {
           {isMyTurn && attackCount > 0 && ' (連続攻撃！)'}
         </span>
       </div>
+
+      {attackOverlay && (
+        <div className="attack-overlay" key={attackOverlayKey}>
+          <div className="attack-overlay-content">
+            <span className="attack-overlay-char">{attackOverlay.char}</span>
+            <span className={`attack-overlay-hits ${attackOverlay.hits > 0 ? 'has-hits' : 'no-hits'}`}>
+              {attackOverlay.hits > 0 ? `${attackOverlay.hits} HIT!` : 'NO HIT...'}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {turnOverlay && (
+        <div className="turn-overlay" key={overlayKey}>
+          <div className={`turn-overlay-content ${turnOverlay.isMe ? 'is-me' : ''} ${turnOverlay.isCombo ? 'is-combo' : ''}`}>
+            {turnOverlay.isCombo && <span className="turn-overlay-combo">連続攻撃！</span>}
+            <span className="turn-overlay-name">{turnOverlay.name}</span>
+            <span className="turn-overlay-sub">のターン！</span>
+          </div>
+        </div>
+      )}
+
+      <div className="my-word-area">
+        <span className="my-word-label">あなたの言葉</span>
+        <div className="my-word-slots">
+          {mySlots.map((char, i) => (
+            <span
+              key={i}
+              className={`my-word-char ${char === EMPTY_SLOT ? 'is-x' : ''}`}
+            >
+              {char}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {isHost && (
+        <button
+          className="btn btn-ghost restart-btn"
+          onClick={() => {
+            if (window.confirm('ゲームを中断してロビーに戻りますか？')) {
+              onRestart();
+            }
+          }}
+        >
+          ゲームをやり直す
+        </button>
+      )}
     </div>
   );
 }

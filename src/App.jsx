@@ -3,7 +3,7 @@ import { loginAnonymously } from './firebase';
 import { STATUS } from './constants';
 import {
   createRoom, joinRoom, leaveRoom, startGame, setTopic,
-  submitWord, checkAllReady, executeAttack, nextGame, subscribeRoom,
+  submitWord, checkAllReady, executeAttack, nextGame, restartGame, subscribeRoom,
 } from './roomService';
 import TopPage from './components/TopPage';
 import RulesPage from './components/RulesPage';
@@ -71,6 +71,7 @@ function App() {
   };
   const handleAttack = (char) => executeAttack(roomId, char, uid);
   const handleNextGame = () => nextGame(roomId);
+  const handleRestart = () => restartGame(roomId);
 
   useEffect(() => {
     if (!room || room.status !== STATUS.INPUTTING) return;
@@ -96,7 +97,7 @@ function App() {
   if (s === STATUS.LOBBY) return <Lobby room={room} roomId={roomId} uid={uid} onStart={handleStart} onLeave={handleLeave} />;
   if (s === STATUS.SETTING_TOPIC) return <TopicSetting room={room} uid={uid} onSetTopic={handleSetTopic} />;
   if (s === STATUS.INPUTTING) return <WordInput room={room} uid={uid} onSubmit={handleSubmitWord} />;
-  if (s === STATUS.BATTLE) return <BattleScreen room={room} uid={uid} onAttack={handleAttack} />;
+  if (s === STATUS.BATTLE) return <BattleScreen room={room} uid={uid} onAttack={handleAttack} onRestart={handleRestart} />;
   if (s === STATUS.RESULT) return <ResultScreen room={room} uid={uid} onNextGame={handleNextGame} onLeave={handleLeave} />;
 
   return <div className="loading">読み込み中...</div>;

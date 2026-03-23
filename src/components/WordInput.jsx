@@ -31,26 +31,16 @@ export default function WordInput({ room, uid, onSubmit }) {
     setCursor(0);
   };
 
-  const handleFillX = () => {
-    if (isReady) return;
-    const next = [...slots];
-    for (let i = cursor; i < SLOT_COUNT; i++) {
-      next[i] = EMPTY_SLOT;
-    }
-    setSlots(next);
-    setCursor(SLOT_COUNT);
-  };
-
   const handleSubmit = () => {
     const filled = slots.filter(s => s && s !== EMPTY_SLOT).length;
     if (filled < MIN_WORD_LENGTH) return;
-    if (slots.some(s => !s)) return; // 全スロット埋まっていること
-    onSubmit(slots);
+    // 空スロットを自動で✕埋め
+    const finalSlots = slots.map(s => s || EMPTY_SLOT);
+    onSubmit(finalSlots);
   };
 
   const filledCount = slots.filter(s => s && s !== EMPTY_SLOT).length;
-  const allFilled = slots.every(s => s !== '');
-  const canSubmit = allFilled && filledCount >= MIN_WORD_LENGTH && !isReady;
+  const canSubmit = filledCount >= MIN_WORD_LENGTH && !isReady;
 
   return (
     <div className="word-input-page">
@@ -93,7 +83,6 @@ export default function WordInput({ room, uid, onSubmit }) {
 
           <div className="kb-actions">
             <button className="btn btn-small" onClick={handleDelete}>← 削除</button>
-            <button className="btn btn-small" onClick={handleFillX}>✕で埋める</button>
             <button className="btn btn-small" onClick={handleClear}>全消し</button>
           </div>
 

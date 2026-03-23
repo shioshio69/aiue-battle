@@ -156,9 +156,13 @@ export const executeAttack = async (roomId, char, attackerUid) => {
 
   const updates = {};
   updates[`board/${char}`] = true;
+  updates['lastAttackChar'] = char;
+  updates['lastAttackTime'] = Date.now();
+  // lastAttackHitsは判定後に設定
 
   let anyOtherHit = false;
   let attackerHit = false;
+  let hitSlotCount = 0;
   const eliminatedThisTurn = [];
 
   // 勝利確定チェック：攻撃者以外に生存者がいるか
@@ -172,17 +176,18 @@ export const executeAttack = async (roomId, char, attackerUid) => {
     if (!player.slots) return;
 
     const revealed = [...(player.revealed || emptyRevealed())];
-    let hit = false;
+    let playerHits = 0;
 
     for (let i = 0; i < SLOT_COUNT; i++) {
       if (player.slots[i] === char && !revealed[i]) {
         revealed[i] = true;
-        hit = true;
+        playerHits++;
       }
     }
 
-    if (hit) {
+    if (playerHits > 0) {
       updates[`players/${uid}/revealed`] = revealed;
+      hitSlotCount += playerHits;
 
       if (uid === attackerUid) {
         attackerHit = true;
@@ -219,6 +224,9 @@ export const executeAttack = async (roomId, char, attackerUid) => {
       updates[`players/${e.uid}/eliminatedOrder`] = minOrder;
     });
   }
+
+  // ヒット数（オープンされたマス数）をFirebaseに保存
+  updates['lastAttackHits'] = hitSlotCount;
 
   // 攻撃者自身が脱落したかチェック
   const attackerEliminated = eliminatedThisTurn.some(e => e.uid === attackerUid);
@@ -312,6 +320,43 @@ export const nextGame = async (roomId) => {
   });
 
   // 各プレイヤーリセット
+  activePlayers.forEach(([uid]) => {
+    updates[`players/${uid}/slots`] = null;
+    updates[`players/${uid}/revealed`] = emptyRevealed();
+    updates[`players/${uid}/isEliminated`] = false;
+    updates[`players/${uid}/eliminatedOrder`] = null;
+    updates[`players/${uid}/inputReady`] = false;
+  });
+
+  await update(roomRef(roomId), updates);
+};
+
+// ゲームをやり直す（ホスト専用：ロビーに戻す）
+export const restartGame = async (roomId) => {
+  const snap = await get(roomRef(roomId));
+  const room = snap.val();
+  if (!room) return;
+
+  const activePlayers = Object.entries(room.players)
+    .filter(([, p]) => !p.isDisconnected);
+
+  const updates = {
+    status: STATUS.LOBBY,
+    topic: null,
+    topicSetterUid: null,
+    turnIndex: 0,
+    turnAttackCount: 0,
+    lastAttackChar: null,
+    lastAttackTime: null,
+    lastAttackHits: null,
+    playerOrder: activePlayers.map(([uid]) => uid),
+    lastActivity: Date.now(),
+  };
+
+  ALL_CHARS.forEach(c => {
+    updates[`board/${c}`] = false;
+  });
+
   activePlayers.forEach(([uid]) => {
     updates[`players/${uid}/slots`] = null;
     updates[`players/${uid}/revealed`] = emptyRevealed();

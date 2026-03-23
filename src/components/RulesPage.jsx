@@ -20,7 +20,6 @@ export default function RulesPage({ onBack }) {
             <p>・濁点（゛）半濁点（゜）は取る → 「ビール」→「ひーる」</p>
             <p>・小文字は大文字に → 「きゅうり」→「きゆうり」</p>
             <p>・伸ばす音は「ー」→ 「コーラ」→「こーら」</p>
-            <p>・余ったマスには ✕ を入れる</p>
           </div>
         </section>
 
@@ -35,7 +34,7 @@ export default function RulesPage({ onBack }) {
 
         <section>
           <h3>💀 脱落・勝利</h3>
-          <p>・✕以外の文字が全部オープンされたら<strong>脱落</strong>。</p>
+          <p>・自分の言葉が全部オープンされたら<strong>脱落</strong>。</p>
           <p>・最後の1人になったら<strong>勝利</strong>！（自爆しても脱落しない）</p>
           <p>・同時脱落の場合、攻撃したプレイヤーが勝ち。</p>
         </section>

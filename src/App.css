@@ -22,11 +22,16 @@ body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
 }
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   justify-content: center;
 }
@@ -42,12 +47,16 @@ body {
   cursor: pointer;
   transition: all 0.2s;
   letter-spacing: 0.02em;
+  min-height: 44px;
+  touch-action: manipulation;
 }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .btn-primary { background: var(--primary); color: #fff; }
 .btn-primary:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-1px); }
+.btn-primary:active:not(:disabled) { background: var(--primary-hover); transform: scale(0.97); }
 .btn-secondary { background: var(--secondary); color: #fff; }
 .btn-secondary:hover:not(:disabled) { background: #1a4a80; }
+.btn-secondary:active:not(:disabled) { background: #1a4a80; transform: scale(0.97); }
 .btn-ghost { background: transparent; color: var(--text-muted); text-decoration: underline; font-size: 0.9rem; }
 .btn-ghost:hover { color: var(--text); }
 .btn-small { font-size: 0.8rem; padding: 6px 14px; border-radius: var(--radius-sm); background: var(--secondary); color: #fff; }
@@ -261,13 +270,15 @@ body {
 .chip {
   font-family: inherit;
   font-size: 0.85rem;
-  padding: 6px 14px;
+  padding: 8px 14px;
   border-radius: 20px;
   border: 1px solid #445;
   background: transparent;
   color: var(--text);
   cursor: pointer;
   transition: all 0.2s;
+  min-height: 40px;
+  touch-action: manipulation;
 }
 .chip:hover { border-color: var(--primary); }
 .chip-active { background: var(--primary); border-color: var(--primary); color: #fff; }
@@ -309,9 +320,12 @@ body {
   gap: 6px;
   width: 100%;
   justify-content: center;
+  flex-wrap: nowrap;
 }
 .slot {
   width: 40px; height: 48px;
+  min-width: 0;
+  flex: 0 1 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -322,6 +336,7 @@ body {
   background: var(--bg-card);
   cursor: pointer;
   transition: all 0.2s;
+  touch-action: manipulation;
 }
 .slot-active { border-color: var(--primary); background: #2a1525; }
 .slot-x { color: var(--text-muted); }
@@ -335,7 +350,7 @@ body {
 .kb-row { display: flex; gap: 4px; justify-content: center; }
 .kb-key {
   font-family: inherit;
-  width: 44px; height: 40px;
+  width: 44px; height: 44px;
   font-size: 1rem;
   font-weight: 700;
   border: none;
@@ -344,11 +359,12 @@ body {
   color: var(--text);
   cursor: pointer;
   transition: all 0.15s;
+  touch-action: manipulation;
 }
 .kb-key:hover:not(:disabled) { background: #1a4a80; transform: scale(1.05); }
 .kb-key:active:not(:disabled) { transform: scale(0.95); }
 .kb-key:disabled { opacity: 0.3; }
-.kb-empty { width: 44px; height: 40px; }
+.kb-empty { width: 44px; height: 44px; }
 .kb-actions { display: flex; gap: 8px; }
 .ready-text { color: var(--success); font-weight: 700; text-align: center; }
 .player-status-list {
@@ -441,6 +457,7 @@ body {
   color: var(--text);
   cursor: default;
   transition: all 0.2s;
+  touch-action: manipulation;
 }
 .board-cell.attackable {
   cursor: pointer;
@@ -534,16 +551,130 @@ body {
 }
 
 /* === Responsive === */
-@media (max-width: 480px) {
-  .top-title { font-size: 2rem; }
-  .kb-key { width: 36px; height: 36px; font-size: 0.85rem; }
-  .kb-empty { width: 36px; }
-  .board-cell, .board-empty { width: 30px; height: 30px; font-size: 0.8rem; }
-  .slot { width: 34px; height: 42px; font-size: 1rem; }
-  .hand-slot { width: 24px; height: 28px; font-size: 0.65rem; }
-  .hands-container { grid-template-columns: repeat(2, 1fr); }
+
+/* タッチデバイスではhoverエフェクトを無効化 */
+@media (hover: none) {
+  .btn-primary:hover:not(:disabled) { background: var(--primary); transform: none; }
+  .btn-secondary:hover:not(:disabled) { background: var(--secondary); }
+  .kb-key:hover:not(:disabled) { background: var(--secondary); transform: none; }
+  .board-cell.attackable:hover { background: #1a4a80; transform: none; }
+  .chip:hover { border-color: #445; }
+  /* active状態でフィードバック */
+  .board-cell.attackable:active { background: var(--primary); transform: scale(0.93); }
+  .kb-key:active:not(:disabled) { background: #1a4a80; transform: scale(0.93); }
 }
 
+/* スマホ標準 (480px以下) */
+@media (max-width: 480px) {
+  .top-title { font-size: 2rem; }
+  .top-page { padding: 30px 16px; }
+  .top-card { padding: 20px 16px; }
+
+  /* バトル画面: ボードセルをビューポート幅に合わせて動的サイズ */
+  .board-cell, .board-empty {
+    width: calc((100vw - 24px - 12px) / 5);  /* 5列 + gap */
+    height: calc((100vw - 24px - 12px) / 5);
+    max-width: 44px;
+    max-height: 44px;
+    font-size: 1rem;
+  }
+
+  /* キーボードも動的サイズ */
+  .kb-key, .kb-empty {
+    width: calc((100vw - 40px - 16px) / 5);  /* padding*2 + gap*4 */
+    height: 44px;
+    max-width: 56px;
+    font-size: 1rem;
+  }
+
+  /* スロットを柔軟に */
+  .slot {
+    flex: 1 1 0;
+    min-width: 30px;
+    max-width: 42px;
+    height: 44px;
+    font-size: 1.1rem;
+  }
+
+  .hand-slot { width: 26px; height: 30px; font-size: 0.7rem; }
+  .hand-slot.hidden { font-size: 0.6rem; }
+  .hands-container { grid-template-columns: repeat(2, 1fr); }
+
+  /* バトルページのパディング */
+  .battle-page { padding: 8px; gap: 8px; }
+
+  /* ターン表示を目立たせる */
+  .turn-indicator { padding: 12px; }
+  .turn-text.my-turn { font-size: 1.15rem; }
+
+  /* 結果画面 */
+  .result-page { padding: 20px 16px; }
+  .result-row { padding: 8px 10px; gap: 8px; flex-wrap: wrap; }
+  .result-name { font-size: 0.9rem; }
+  .result-word { font-size: 0.8rem; }
+
+  /* ルール画面 */
+  .rules-card { padding: 18px; }
+
+  /* ロビー */
+  .lobby-page { padding: 24px 16px; }
+  .lobby-card { padding: 18px; }
+
+  /* お題設定 */
+  .topic-page { padding: 24px 16px; }
+  .topic-card { padding: 18px; }
+
+  /* 単語入力 */
+  .word-input-page { padding: 16px 10px; gap: 12px; }
+  .kb-actions { flex-wrap: wrap; justify-content: center; gap: 6px; }
+  .btn-small { padding: 8px 14px; min-height: 40px; }
+}
+
+/* 極小画面 (360px以下: iPhone SE等) */
+@media (max-width: 360px) {
+  .top-title { font-size: 1.7rem; }
+  .top-subtitle { font-size: 0.85rem; letter-spacing: 0.2em; }
+  .page-title { font-size: 1.3rem; }
+
+  .board-cell, .board-empty {
+    width: calc((100vw - 20px - 12px) / 5);
+    height: calc((100vw - 20px - 12px) / 5);
+    max-width: 38px;
+    max-height: 38px;
+    font-size: 0.9rem;
+    border-radius: 4px;
+  }
+  .board-grid { gap: 2px; }
+  .board-row { gap: 2px; }
+
+  .kb-key, .kb-empty {
+    width: calc((100vw - 32px - 12px) / 5);
+    height: 42px;
+    max-width: 48px;
+    font-size: 0.9rem;
+  }
+  .keyboard { gap: 3px; }
+  .kb-row { gap: 3px; }
+
+  .slot {
+    min-width: 26px;
+    max-width: 36px;
+    height: 40px;
+    font-size: 1rem;
+  }
+  .slots-row { gap: 4px; }
+
+  .hand-slot { width: 22px; height: 26px; font-size: 0.6rem; }
+  .hand-slots { gap: 2px; }
+  .hand-card { padding: 6px 8px; }
+  .hand-header { font-size: 0.75rem; }
+
+  .topic-banner { font-size: 0.95rem; padding: 6px 12px; }
+  .btn { font-size: 0.9rem; padding: 10px 18px; }
+  .input-field { padding: 10px 12px; }
+}
+
+/* タブレット以上 (600px以上): バトル画面を横並びに */
 @media (min-width: 600px) {
   .battle-layout {
     flex-direction: row;
@@ -556,4 +687,21 @@ body {
   .board-container {
     flex: 1;
   }
+}
+
+/* PC向け (768px以上) */
+@media (min-width: 768px) {
+  .board-cell, .board-empty { width: 40px; height: 40px; font-size: 1rem; }
+  .hand-slot { width: 30px; height: 34px; font-size: 0.8rem; }
+}
+
+/* 横向き + 小さい高さへの対応 */
+@media (max-height: 500px) and (orientation: landscape) {
+  .battle-page { padding: 6px; gap: 6px; }
+  .turn-indicator { padding: 6px; }
+  .board-cell, .board-empty { width: 28px; height: 28px; font-size: 0.8rem; }
+  .board-grid { gap: 2px; }
+  .board-row { gap: 2px; }
+  .hand-card { padding: 4px 6px; }
+  .hand-slot { width: 20px; height: 24px; font-size: 0.6rem; }
 }

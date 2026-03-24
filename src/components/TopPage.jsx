@@ -70,6 +70,15 @@ export default function TopPage({ onCreateRoom, onJoinRoom, onShowRules }) {
       <div className="top-hero">
         <h1 className="top-title">あいうえバトル</h1>
         <p className="top-subtitle">Online</p>
+        <p className="top-summary">
+          お題に沿った秘密の言葉をひらがなで設定し、<br />
+          50音から1文字ずつ攻撃！<br />
+          相手の言葉を暴きつつ、<br />
+          自分の言葉を最後まで守り切れ！
+        </p>
+        <button className="btn btn-ghost top-rules-link" onClick={onShowRules}>
+          詳細ルール説明はこちら
+        </button>
       </div>
 
       <div className="top-card">
@@ -161,9 +170,6 @@ export default function TopPage({ onCreateRoom, onJoinRoom, onShowRules }) {
         {error && <p className="error-text">{error}</p>}
       </div>
 
-      <button className="btn btn-ghost" onClick={onShowRules}>
-        ルール説明
-      </button>
     </div>
   );
 }

@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BOARD_ROWS, SLOT_COUNT, EMPTY_SLOT, PLAYER_COLORS } from '../constants';
+import {
+  playAttackSelect, playHit, playMiss, playSelfHit,
+  playElimination, playTurnChange, isMuted, setMuted,
+} from '../soundService';
 
 const ATTACK_OVERLAY_MS = 1700;
 const REVEAL_DELAY_MS = 800;
@@ -7,6 +11,7 @@ const TURN_OVERLAY_MS = 1500;
 
 export default function BattleScreen({ room, uid, onAttack, onRestart }) {
   const [attacking, setAttacking] = useState(false);
+  const [muted, setMutedState] = useState(isMuted());
   const [attackOverlay, setAttackOverlay] = useState(null);
   const [attackOverlayKey, setAttackOverlayKey] = useState(0);
   const [justRevealedChar, setJustRevealedChar] = useState(null);
@@ -15,6 +20,13 @@ export default function BattleScreen({ room, uid, onAttack, onRestart }) {
   const prevTurnIndexRef = useRef(room.turnIndex);
   const prevAttackCountRef = useRef(room.turnAttackCount || 0);
   const prevAttackTimeRef = useRef(room.lastAttackTime || 0);
+  const prevEliminatedRef = useRef(() => {
+    const set = new Set();
+    Object.entries(room.players || {}).forEach(([uid, p]) => {
+      if (p.isEliminated) set.add(uid);
+    });
+    return set;
+  });
   const timersRef = useRef([]);
 
   const playerOrder = room.playerOrder || [];
@@ -59,12 +71,39 @@ export default function BattleScreen({ room, uid, onAttack, onRestart }) {
     if (attackHappened) {
       // Step 1: 攻撃文字オーバーレイ（hit数付き）
       const hits = room.lastAttackHits || 0;
+      const selfHit = room.lastAttackSelfHit;
+      const otherHit = room.lastAttackAnyOtherHit;
       setAttackOverlay({ char: attackChar, hits });
       setAttackOverlayKey(k => k + 1);
+
+      // SE: 攻撃結果音
+      if (hits === 0) {
+        playMiss();
+      } else if (selfHit && !otherHit) {
+        playSelfHit();
+      } else {
+        playHit(hits);
+      }
+
+      // 今回新たに脱落したプレイヤーを検出
+      const prevElim = prevEliminatedRef.current;
+      const newlyEliminated = Object.entries(room.players || {}).some(
+        ([pUid, p]) => p.isEliminated && !p.isDisconnected && !prevElim.has(pUid)
+      );
+      // 脱落状態を更新
+      const nextElim = new Set();
+      Object.entries(room.players || {}).forEach(([pUid, p]) => {
+        if (p.isEliminated) nextElim.add(pUid);
+      });
+      prevEliminatedRef.current = nextElim;
 
       // Step 2: オープン演出（攻撃文字をhand-slotに反映するタイミング）
       addTimer(() => {
         setJustRevealedChar(attackChar);
+        // SE: 新たな脱落者がいれば脱落音
+        if (newlyEliminated) {
+          addTimer(() => playElimination(), 200);
+        }
       }, REVEAL_DELAY_MS);
 
       // Step 3: 攻撃オーバーレイ消す
@@ -102,11 +141,19 @@ export default function BattleScreen({ room, uid, onAttack, onRestart }) {
       isCombo: comboTriggered,
     });
     setOverlayKey(k => k + 1);
+    playTurnChange();
     addTimer(() => setTurnOverlay(null), TURN_OVERLAY_MS);
+  };
+
+  const toggleMute = () => {
+    const newVal = !muted;
+    setMuted(newVal);
+    setMutedState(newVal);
   };
 
   const handleAttack = async (char) => {
     if (!isMyTurn || attacking || board[char]) return;
+    playAttackSelect();
     setAttacking(true);
     try {
       await onAttack(char);
@@ -131,6 +178,9 @@ export default function BattleScreen({ room, uid, onAttack, onRestart }) {
 
   return (
     <div className="battle-page">
+      <button className="mute-btn" onClick={toggleMute} title={muted ? '音ON' : '音OFF'}>
+        {muted ? '🔇' : '🔊'}
+      </button>
       <div className="topic-banner">お題：{room.topic}</div>
 
       <div className="battle-layout">

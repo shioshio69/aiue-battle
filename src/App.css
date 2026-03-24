@@ -113,7 +113,14 @@ body {
   align-items: center;
   gap: 20px;
 }
-.top-hero { text-align: center; margin-bottom: 10px; }
+.top-hero { text-align: center; margin-bottom: 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.top-summary {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-top: 8px;
+}
+.top-rules-link { font-size: 0.8rem; margin-top: 2px; }
 .top-title {
   font-size: 2.5rem;
   font-weight: 900;
@@ -444,7 +451,23 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  position: relative;
 }
+.mute-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  padding: 4px;
+  line-height: 1;
+}
+.mute-btn:hover { opacity: 1; }
 .battle-layout {
   display: flex;
   flex-direction: column;
@@ -953,4 +976,35 @@ body {
   .board-row { gap: 2px; }
   .hand-card { padding: 4px 6px; }
   .hand-slot { font-size: 0.55rem; }
+}
+
+/* === Toast Notification === */
+.toast-container {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+.toast {
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  border: 1px solid #445;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  animation: toastSlide 3s ease forwards;
+}
+@keyframes toastSlide {
+  0% { transform: translateY(-20px); opacity: 0; }
+  10% { transform: translateY(0); opacity: 1; }
+  80% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(-10px); opacity: 0; }
 }

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { buildRanking } from '../gameLogic';
 import { PLAYER_COLORS } from '../constants';
+import { playVictory } from '../soundService';
 
 const RANK_EMOJI = ['🥇', '🥈', '🥉'];
 
@@ -8,6 +9,16 @@ export default function ResultScreen({ room, uid, onNextGame, onLeave }) {
   const isHost = room.hostUid === uid;
   const ranking = buildRanking(room.players || {});
   const gameCount = room.gameCount || 1;
+  const playedRef = useRef(false);
+
+  useEffect(() => {
+    if (playedRef.current) return;
+    const myRank = ranking.find(e => e.uid === uid);
+    if (myRank && myRank.rank === 1) {
+      playVictory();
+    }
+    playedRef.current = true;
+  }, []);
 
   return (
     <div className="result-page">

@@ -6,8 +6,33 @@ import { generateRoomId, shuffle, emptyRevealed, emptyBoard, getLoser } from './
 const roomRef = (roomId) => ref(db, `rooms/${roomId}`);
 const playerRef = (roomId, uid) => ref(db, `rooms/${roomId}/players/${uid}`);
 
+const STALE_ROOM_AGE_MS = 24 * 60 * 60 * 1000; // 24時間
+
+// 古いルームを掃除（fire-and-forget）
+export const cleanupStaleRooms = async () => {
+  try {
+    const snap = await get(ref(db, 'rooms'));
+    if (!snap.exists()) return;
+    const rooms = snap.val();
+    let deleted = 0;
+    const now = Date.now();
+    for (const [id, room] of Object.entries(rooms)) {
+      if (deleted >= 10) break; // 1回の掃除は最大10件
+      if (room.lastActivity && now - room.lastActivity > STALE_ROOM_AGE_MS) {
+        await remove(roomRef(id));
+        deleted++;
+      }
+    }
+  } catch (e) {
+    console.error('cleanup error:', e);
+  }
+};
+
 // ルーム作成
 export const createRoom = async (uid, name) => {
+  // 古いルームを非同期で掃除
+  cleanupStaleRooms().catch(() => {});
+
   const roomId = generateRoomId();
   const existing = await get(roomRef(roomId));
   if (existing.exists()) return createRoom(uid, name); // 衝突時リトライ
@@ -43,15 +68,52 @@ export const createRoom = async (uid, name) => {
   return roomId;
 };
 
-// ルーム参加
+// ルーム参加（再接続対応: 同名の切断プレイヤーがいればデータ移行して復帰）
 export const joinRoom = async (roomId, uid, name) => {
   const snap = await get(roomRef(roomId));
   if (!snap.exists()) throw new Error('ルームが存在しません');
 
   const room = snap.val();
+
+  // 再接続チェック: 同名の切断中プレイヤーを探す
+  const disconnectedEntry = Object.entries(room.players || {})
+    .find(([, p]) => p.name === name && p.isDisconnected);
+
+  if (disconnectedEntry) {
+    const [oldUid, oldPlayer] = disconnectedEntry;
+
+    // 同一UIDなら単純に復帰
+    if (oldUid === uid) {
+      await update(playerRef(roomId, uid), { isDisconnected: false });
+      await update(roomRef(roomId), { lastActivity: Date.now() });
+    } else {
+      // 新UIDにデータ移行（アトミック更新）
+      const updates = {};
+      updates[`players/${uid}`] = { ...oldPlayer, isDisconnected: false };
+      updates[`players/${oldUid}`] = null; // 旧エントリ削除
+
+      // playerOrder の差し替え
+      const newOrder = (room.playerOrder || []).map(id => id === oldUid ? uid : id);
+      updates['playerOrder'] = newOrder;
+
+      // ホスト・お題設定者の参照を更新
+      if (room.hostUid === oldUid) updates['hostUid'] = uid;
+      if (room.topicSetterUid === oldUid) updates['topicSetterUid'] = uid;
+
+      updates['lastActivity'] = Date.now();
+      await update(roomRef(roomId), updates);
+    }
+
+    // 切断時フラグ設定
+    const disconnRef = ref(db, `rooms/${roomId}/players/${uid}/isDisconnected`);
+    onDisconnect(disconnRef).set(true);
+    return { reconnected: true };
+  }
+
+  // 通常の新規参加（ロビー時のみ）
   if (room.status !== STATUS.LOBBY) throw new Error('ゲーム中のため参加できません');
 
-  const playerCount = room.players ? Object.keys(room.players).length : 0;
+  const playerCount = room.players ? Object.keys(room.players).filter(id => !room.players[id].isDisconnected).length : 0;
   if (playerCount >= 6) throw new Error('ルームが満員です');
 
   await update(ref(db, `rooms/${roomId}/players/${uid}`), {
@@ -74,6 +136,7 @@ export const joinRoom = async (roomId, uid, name) => {
   // 切断時フラグ設定
   const disconnRef = ref(db, `rooms/${roomId}/players/${uid}/isDisconnected`);
   onDisconnect(disconnRef).set(true);
+  return { reconnected: false };
 };
 
 // ルーム退出
@@ -225,8 +288,10 @@ export const executeAttack = async (roomId, char, attackerUid) => {
     });
   }
 
-  // ヒット数（オープンされたマス数）をFirebaseに保存
+  // 攻撃結果をFirebaseに保存
   updates['lastAttackHits'] = hitSlotCount;
+  updates['lastAttackSelfHit'] = attackerHit;
+  updates['lastAttackAnyOtherHit'] = anyOtherHit;
 
   // 攻撃者自身が脱落したかチェック
   const attackerEliminated = eliminatedThisTurn.some(e => e.uid === attackerUid);
@@ -349,6 +414,8 @@ export const restartGame = async (roomId) => {
     lastAttackChar: null,
     lastAttackTime: null,
     lastAttackHits: null,
+    lastAttackSelfHit: null,
+    lastAttackAnyOtherHit: null,
     playerOrder: activePlayers.map(([uid]) => uid),
     lastActivity: Date.now(),
   };
